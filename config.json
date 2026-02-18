@@ -1,18 +1,21 @@
 {
   "servo_pins": {
-    "linkages": [14, 15],
-    "arms": [18],
-    "pumps": [20]
+    "linkages": [15],
+    "linkage_hold_time": 1,
+    "arms": [14],
+    "pumps": [4]
   },
-  "yolo" : {
-    "path" : "",
-    "min_confidence" : 0.4,
+  "yolo": {
+    "enabled": false,
+    "path": "",
+    "min_confidence": 0.4
   },
-  "capture" : {
-    "ip_address" : "http://192.168.100.109:8080/video",
-    "resolution" : {
-      "x" : 640,
-      "y" : 380,
+  "capture": {
+    "enabled": false,
+    "ip_address": "http://192.168.100.109:8080/video",
+    "resolution": {
+      "x": 640,
+      "y": 380
     }
   }
 }

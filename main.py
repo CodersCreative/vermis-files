@@ -1,8 +1,8 @@
 import json;
 import cv2;
 import numpy as np
-from ultralytics import YOLO
 from gpiozero import AngularServo;
+from gpiozero.pins.pigpio import PiGPIOFactory
 from time import sleep;
 
 CONFIG_PATH : str = "config.json";
@@ -19,35 +19,49 @@ def clamp(num, min_num, max_num):
 
 class Servos:
     def __init__(self, config : dict):
-        servos : dict(str, list(int)) = config["servo_pins"];
+        servos : dict = config["servo_pins"];
 
         def create_servo(pin : int) -> AngularServo:
-            return AngularServo(pin, min_angle=0, max_angle=180, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000); 
+            factory = PiGPIOFactory();
+            return AngularServo(pin, min_angle=0, max_angle=360, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000, pin_factory=factory); 
 
         self.linkages = [create_servo(pin) for pin in servos["linkages"]];
+        self.linkage_hold_time = servos["linkage_hold_time"];
         self.arms = [create_servo(pin) for pin in servos["arms"]];
         self.pumps = [create_servo(pin) for pin in servos["pumps"]];
-        
+        self.linkages_activated = False;
         self.pumps_activated = False;        
 
-    def set_linkage_height(self, percent : float):
+    def activate_linkags(self):
         for servo in self.linkages:
-            servo.angle = clamp(percent, 0, 1) * 90;
+            if self.linkages_activated:
+                servo.angle = 30;
+            else :
+                servo.angle = 0;
 
     def set_arm_height(self, percent : float):
             for servo in self.arms:
-                servo.angle = clamp(percent, 0, 1) * 60;
+                servo.angle = clamp(percent, 0, 1) * 70;
                 
     def activate_pump(self):
         for servo in self.pumps:
-            if not self.pumps_activated:
-                servo.angle = 90;
+            if self.pumps_activated:
+                servo.angle = 50;
             else:
                 servo.angle = 0;
 
 class PestDetection:
     def __init__(self, config : dict):
-        self.model = YOLO(config["yolo"]["path"]);
+        if not config["capture"]["enabled"]:
+            self.enabled = False;
+            return;
+        self.enabled = True;
+
+        if config["yolo"]["enabled"]:
+            self.yolo_enabled = True;
+            from ultralytics import YOLO            
+            self.model = YOLO(config["yolo"]["path"]);
+        self.yolo_enabled = False;
         self.cap = cv2.VideoCapture(config["capture"]["ip_address"]);
         self.resolution = {"x" : config["capture"]["resolution"]["x"], "y" : config["capture"]["resolution"]["y"]};
         self.min_confidence = config["yolo"]["min_confidence"];
@@ -58,6 +72,7 @@ class PestDetection:
         return frame;
 
     def severity(self, capture : np.ndarray) -> float:
+        if not self.yolo_enabled: 0.0;
         results = self.model(capture, verbose=False);
         detections = results[0].boxes;
         detection_amt : int = len(detections);
@@ -76,21 +91,21 @@ class PestDetection:
         
 def spray_pests(servos : Servos, detection : PestDetection):
     timeout : int = 0;
-    for interval in range(LINKAGE_HEIGHT_INTERVALS):
-        servos.set_linkage_height(interval / LINKAGE_HEIGHT_INTERVALS);
-    
-        if timeout > 0:
-            timeout -= 1;
-            continue;
-
+            
+    def handle_severity() -> bool:
         severity : float = detection.severity(detection.capture());
         if severity > 0:
             servos.activate_pump();
             sleep(severity * MAX_SPRAY_TIME);
             servos.activate_pump();
             timeout = 2;
-            
-        
+            return true;
+        return false;
+
+    if handle_severity(): return;    
+    self.activate_linages();    
+    if handle_severity(): return;
+
     for interval in range(ARM_HEIGHT_INTERVALS):
         servos.set_arm_height(interval / ARM_HEIGHT_INTERVALS);
           
@@ -98,12 +113,9 @@ def spray_pests(servos : Servos, detection : PestDetection):
             timeout -= 1;
             continue;
 
-        severity : float = detection.severity(detection.capture());
-        if severity > 0:
-            servos.activate_pump();
-            sleep(severity * MAX_SPRAY_TIME);
-            servos.activate_pump();
-            timeout = 2; 
+        if handle_severity(): return;
+
+    self.activate_linages();
 
 class Movement:
     def __init__(self, config : dict):
@@ -124,3 +136,6 @@ def main():
     while True:
         spray_pests(servos, detection);
         movement.next_plant();
+
+if __name__ == "__main__":
+    main();
