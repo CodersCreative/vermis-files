@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass, asdict, field
 from typing import Any
 
+
 @dataclass
 class ServoPinsConfig:
     linkages: list[int] = field(default_factory=lambda: [15])
@@ -9,21 +10,26 @@ class ServoPinsConfig:
     arms: list[int] = field(default_factory=lambda: [14])
     pumps: list[int] = field(default_factory=lambda: [4])
 
+
 @dataclass
 class YoloConfig:
     enabled: bool = True
     path: str = ""
     min_confidence: float = 0.4
 
+
 @dataclass
 class CaptureConfig:
-    resolution: dict[str, int] = field(default_factory=lambda: {
-        "x": 800,
-        "y": 600,
-    })
+    resolution: dict[str, int] = field(
+        default_factory=lambda: {
+            "x": 800,
+            "y": 600,
+        }
+    )
     enabled: bool = True
     use_webcam: bool = True
     ip_address: str = "http://192.168.100.109:8080/video"
+
 
 @dataclass
 class Config:
@@ -39,7 +45,7 @@ class Config:
         return cls(
             servo_pins=ServoPinsConfig(**data.get("servo_pins", {})),
             yolo=YoloConfig(**data.get("yolo", {})),
-            capture=CaptureConfig(**data.get("capture", {}))
+            capture=CaptureConfig(**data.get("capture", {})),
         )
 
     @classmethod

@@ -1,3 +1,5 @@
+TINY_FONT = ("Arial", 6)
+TINY_BOLD_FONT = ("Arial Bold", 6)
 SMALL_FONT = ("Arial", 8)
 MEDIUM_FONT = ("Arial Regular", 12)
 LARGE_FONT = ("Arial Bold", 16)
@@ -12,5 +14,5 @@ TEXT_COLOUR = "#CDD5F4"
 PADDING_LARGE = 5
 PADDING_SMALL = 2
 
-CONFIG_PATH = "./config.json";
-WINDOW_SIZE = {"x" : 1280, "y" : 720}
+CONFIG_PATH = "./config.json"
+WINDOW_SIZE = {"x": 1280, "y": 720}
