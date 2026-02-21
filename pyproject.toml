@@ -1,0 +1,12 @@
+[project]
+name = "vermis"
+version = "0.0.1"
+dependencies = [
+  "customtkinter",
+  "opencv-python",
+  "pillow",
+]
+extend-exclude = [
+    "*.pyc",
+    "__pycache__",
+]
