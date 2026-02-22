@@ -4,11 +4,29 @@ from typing import Any
 
 
 @dataclass
+class ServoPinConfig:
+    role: str = "Link"
+    pin: int = 0
+    angle_offset: float = 0.0
+    min_angle: float = 0.0
+    max_angle: float = 360.0
+    deadband_degrees: float = 1.5
+    command_interval_seconds: float = 0.08
+
+
+@dataclass
 class ServoPinsConfig:
-    linkages: list[int] = field(default_factory=lambda: [15])
-    linkage_hold_time: int = 1
-    arms: list[int] = field(default_factory=lambda: [14])
-    pumps: list[int] = field(default_factory=lambda: [4])
+    linkage_hold_time: float = 1.0
+    defaults: ServoPinConfig = field(
+        default_factory=lambda: ServoPinConfig(role="Default", pin=0)
+    )
+    servos: list[ServoPinConfig] = field(
+        default_factory=lambda: [
+            ServoPinConfig(role="Link", pin=15),
+            ServoPinConfig(role="Arm", pin=14),
+            ServoPinConfig(role="Pump", pin=4),
+        ]
+    )
 
 
 @dataclass
@@ -42,8 +60,22 @@ class Config:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]):
+        servo_data = data.get("servo_pins", {})
+        defaults = ServoPinConfig(**servo_data.get("defaults", {}))
+        servos = [ServoPinConfig(**item) for item in servo_data.get("servos", [])]
+
         return cls(
-            servo_pins=ServoPinsConfig(**data.get("servo_pins", {})),
+            servo_pins=ServoPinsConfig(
+                linkage_hold_time=float(servo_data.get("linkage_hold_time", 1.0)),
+                defaults=defaults,
+                servos=servos
+                if servos
+                else [
+                    ServoPinConfig(role="Link", pin=15),
+                    ServoPinConfig(role="Arm", pin=14),
+                    ServoPinConfig(role="Pump", pin=4),
+                ],
+            ),
             yolo=YoloConfig(**data.get("yolo", {})),
             capture=CaptureConfig(**data.get("capture", {})),
         )
@@ -54,7 +86,7 @@ class Config:
             with open(path, "r") as file:
                 data = json.load(file)
                 return cls.from_dict(data)
-        except:
+        except Exception:
             config = cls()
             config.save_to_file(path)
             return config

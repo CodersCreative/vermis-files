@@ -1,14 +1,43 @@
 {
     "servo_pins": {
-        "linkages": [
-            15
-        ],
         "linkage_hold_time": 1.0,
-        "arms": [
-            14
-        ],
-        "pumps": [
-            4
+        "defaults": {
+            "role": "Default",
+            "pin": 0,
+            "angle_offset": 0.0,
+            "min_angle": 0.0,
+            "max_angle": 360.0,
+            "deadband_degrees": 1.5,
+            "command_interval_seconds": 0.08
+        },
+        "servos": [
+            {
+                "role": "Link",
+                "pin": 15,
+                "angle_offset": 0.0,
+                "min_angle": 0.0,
+                "max_angle": 360.0,
+                "deadband_degrees": 1.5,
+                "command_interval_seconds": 0.08
+            },
+            {
+                "role": "Arm",
+                "pin": 14,
+                "angle_offset": 0.0,
+                "min_angle": 0.0,
+                "max_angle": 360.0,
+                "deadband_degrees": 1.5,
+                "command_interval_seconds": 0.08
+            },
+            {
+                "role": "Pump",
+                "pin": 4,
+                "angle_offset": 0.0,
+                "min_angle": 0.0,
+                "max_angle": 360.0,
+                "deadband_degrees": 1.5,
+                "command_interval_seconds": 0.08
+            }
         ]
     },
     "yolo": {
@@ -18,8 +47,8 @@
     },
     "capture": {
         "resolution": {
-            "x": 900,
-            "y": 600
+            "x": 1280,
+            "y": 720
         },
         "enabled": true,
         "use_webcam": true,

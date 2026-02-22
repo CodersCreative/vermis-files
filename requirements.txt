@@ -1,3 +1,5 @@
 customtkinter
 opencv-python
 pillow
+gpiozero
+ultralytics

@@ -1,13 +1,22 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from overlays import Overlay
-from settings import SettingsPopUp
-from settings import *
-from config import Config
-from constants import *
+import time
 import customtkinter as ctk
 import cv2
+import numpy as np
 from PIL import Image
+from config import Config
+from constants import ALTERNATE_DARK_COLOUR, CONFIG_PATH, WINDOW_SIZE, UI_SCALE
+from controllers import (
+    CaptureManager,
+    DetectionResult,
+    ServoRig,
+    SprayController,
+    YoloDetector,
+    draw_boxes,
+)
+from overlays import Overlay
+from settings import SettingsPopUp
 
 
 @dataclass
@@ -39,52 +48,205 @@ class App(ctk.CTk):
         super().__init__(fg_color=ALTERNATE_DARK_COLOUR)
         self.title("The Vermis App")
         self.geometry(f"{WINDOW_SIZE['x']}x{WINDOW_SIZE['y']}")
-        self.assets = Assets()
+        try:
+            self.state("zoomed")
+        except Exception:
+            pass
         ctk.DrawEngine.preferred_drawing_method = "circle_shapes"
-        ctk.set_widget_scaling(2)
+        ctk.set_widget_scaling(UI_SCALE)
         ctk.set_appearance_mode("dark")
-        self.video_widget = ctk.CTkLabel(self, text="")
-        self.video_widget.pack(pady=20)
-        self.overlay = Overlay(self, lambda: (), lambda: (), lambda: ())
-        self.overlay.place(x=10, y=10)
+
+        self.assets = Assets()
         self.config = Config.load_from_file(CONFIG_PATH)
-        self.settings = None
         self.width, self.height = (
             self.config.capture.resolution["x"],
             self.config.capture.resolution["y"],
         )
-        self.handle_vid_feed()
-        self.start_camera()
-        self.bind("<Escape>", lambda e: self.quit_app())
-        self.protocol("WM_DELETE_WINDOW", self.quit_app)
-        self.open_settings()
 
-    def handle_vid_feed(self):
-        if self.config.capture.use_webcam:
-            self.vid = cv2.VideoCapture(0)
-        else:
-            # TODO Other feeds
-            self.vid = cv2.VideoCapture(0)
+        self.capture_manager = CaptureManager(self.config.capture)
+        self.yolo_detector = YoloDetector(self.config.yolo)
+        self.servo_rig = ServoRig(self.config.servo_pins)
+
+        self.last_detection = DetectionResult(0.0, [], False, "Waiting for frame")
+        self.spray_controller = SprayController(self.servo_rig, self.get_last_detection)
+        self.arm_raise_stage = 0
+        self.started_at = time.monotonic()
+
+        self.video_widget = ctk.CTkLabel(self, text="")
+        self.video_widget.pack(fill="both", expand=True)
+
+        self.overlay = Overlay(
+            self,
+            on_pause=self.toggle_pause,
+            on_spray=self.manual_spray,
+            on_rise=self.raise_arm,
+        )
+        self.overlay.place(x=10, y=10)
+        self.update_servo_status()
+
+        self.settings: SettingsPopUp | None = None
+
+        self.bind("<Escape>", lambda _e: self.quit_app())
+        self.protocol("WM_DELETE_WINDOW", self.quit_app)
+
+        self.open_settings()
+        self.start_camera()
+
+    def get_last_detection(self) -> DetectionResult:
+        return self.last_detection
+
+    def apply_runtime_config(self, config: Config):
+        self.config = config
+        self.width = self.config.capture.resolution["x"]
+        self.height = self.config.capture.resolution["y"]
+
+        self.capture_manager.apply_config(self.config.capture)
+        self.yolo_detector.apply_config(self.config.yolo)
+        self.servo_rig.apply_config(self.config.servo_pins)
+        self.update_servo_status()
+
+    def update_servo_status(self):
+        if self.servo_rig.total_channels == 0:
+            self.overlay.set_servo_status("No channels configured")
+            return
+        self.overlay.set_servo_status(
+            f"{self.servo_rig.available_channels}/{self.servo_rig.total_channels} active"
+        )
 
     def start_camera(self):
-        success, frame = self.vid.read()
+        frame = self.capture_manager.read()
 
-        if success:
-            opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            captured_image = Image.fromarray(opencv_image)
-            photo_image = ctk.CTkImage(
-                light_image=captured_image,
-                dark_image=captured_image,
-                size=(self.width, self.height),
+        if frame is None:
+            display = self.blank_frame()
+            self.last_detection = DetectionResult(
+                0.0, [], False, "Capture disabled or unavailable"
             )
-            self.video_widget.configure(image=photo_image)
-            self.video_widget.after(10, self.start_camera)
+            self.overlay.set_capture_status("Disabled/Unavailable")
+            self.overlay.set_yolo_status("Idle")
+        else:
+            self.overlay.set_capture_status("Running")
+            detection = self.yolo_detector.detect(frame)
+            self.last_detection = detection
+
+            if detection.active and self.config.yolo.enabled:
+                display = draw_boxes(frame, detection)
+                self.overlay.set_yolo_status(
+                    "Running"
+                    if detection.reason == "Detections available"
+                    else detection.reason
+                )
+            else:
+                display = frame
+                self.overlay.set_yolo_status(detection.reason or "Inactive")
+
+            if not self.spray_controller.is_paused:
+                self.spray_controller.maybe_auto_spray()
+
+        self.overlay.set_confidence(self.last_detection.severity)
+        self.overlay.set_stage(self.current_stage())
+        self.overlay.set_paused_state(self.spray_controller.is_paused)
+        self.overlay.set_uptime(self.format_uptime())
+        self.overlay.set_battery(self.read_battery_status())
+        self.overlay.set_distance("10km")
+
+        self.update_idletasks()
+        target_width = max(320, int(self.video_widget.winfo_width()))
+        target_height = max(240, int(self.video_widget.winfo_height()))
+        display = self.fit_frame_to_widget(display, target_width, target_height)
+
+        opencv_image = cv2.cvtColor(display, cv2.COLOR_BGR2RGB)
+        captured_image = Image.fromarray(opencv_image)
+        photo_image = ctk.CTkImage(
+            light_image=captured_image,
+            dark_image=captured_image,
+            size=(
+                max(1, int(target_width / UI_SCALE)),
+                max(1, int(target_height / UI_SCALE)),
+            ),
+        )
+        self.video_widget.configure(image=photo_image)
+        self.video_widget.image = photo_image
+        self.video_widget.after(25, self.start_camera)
+
+    def fit_frame_to_widget(self, frame, target_width: int, target_height: int):
+        frame_height, frame_width = frame.shape[:2]
+        if frame_height <= 0 or frame_width <= 0:
+            return cv2.resize(frame, (target_width, target_height))
+
+        scale = min(target_width / frame_width, target_height / frame_height)
+        new_width = max(1, int(frame_width * scale))
+        new_height = max(1, int(frame_height * scale))
+
+        resized = cv2.resize(frame, (new_width, new_height))
+        canvas = np.zeros((target_height, target_width, 3), dtype=np.uint8)
+
+        x_offset = (target_width - new_width) // 2
+        y_offset = (target_height - new_height) // 2
+        canvas[y_offset : y_offset + new_height, x_offset : x_offset + new_width] = (
+            resized
+        )
+        return canvas
+
+    def blank_frame(self):
+        frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        cv2.putText(
+            frame,
+            "Capture disabled",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (200, 200, 200),
+            2,
+            cv2.LINE_AA,
+        )
+        return frame
+
+    def current_stage(self) -> str:
+        if self.spray_controller.is_paused:
+            return "Paused"
+        if self.spray_controller.is_spraying:
+            return "Spraying"
+        if self.last_detection.severity > 0:
+            return "Target detected"
+        return "Searching"
+
+    def format_uptime(self) -> str:
+        elapsed = int(max(0, time.monotonic() - self.started_at))
+        hours = elapsed // 3600
+        minutes = (elapsed % 3600) // 60
+        seconds = elapsed % 60
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+    def read_battery_status(self) -> str:
+        try:
+            import psutil
+
+            battery = psutil.sensors_battery()
+            if battery is None or battery.percent is None:
+                return "N/A"
+            return f"{int(battery.percent)}%"
+        except Exception:
+            return "N/A"
+
+    def toggle_pause(self):
+        self.spray_controller.set_paused(not self.spray_controller.is_paused)
+
+    def manual_spray(self):
+        self.spray_controller.manual_spray()
+
+    def raise_arm(self):
+        self.arm_raise_stage = (self.arm_raise_stage + 1) % 4
+        self.servo_rig.set_arm_height(self.arm_raise_stage / 3, force=True)
 
     def open_settings(self):
+        if self.settings is not None and self.settings.winfo_exists():
+            self.settings.focus()
+            return
         self.settings = SettingsPopUp(self)
 
     def quit_app(self):
-        self.vid.release()
+        self.capture_manager.close()
+        self.servo_rig.shutdown()
         self.destroy()
 
 
