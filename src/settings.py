@@ -36,7 +36,7 @@ class SettingsPopUp(ctk.CTkToplevel):
         self.capture_enabled = ctk.BooleanVar(value=master.config.capture.enabled)
 
         self.min_confidence = ctk.DoubleVar(value=master.config.yolo.min_confidence)
-        self.yolo_path = ctk.StringVar(value=master.config.yolo.path)
+        self.yolo_path = ctk.StringVar(value=master.config.yolo.path or "assets/main.pt")
         self.yolo_enabled = ctk.BooleanVar(value=master.config.yolo.enabled)
 
         self.status_text = ctk.StringVar(value="")

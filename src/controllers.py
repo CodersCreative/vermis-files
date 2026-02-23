@@ -1,6 +1,7 @@
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
 import cv2
 import numpy as np
@@ -8,6 +9,7 @@ from config import CaptureConfig, ServoPinConfig, ServoPinsConfig, YoloConfig
 
 MAX_SPRAY_TIME = 5.0
 ARM_HEIGHT_INTERVALS = 3
+DEFAULT_YOLO_MODEL_PATH = "assets/main.pt"
 
 
 @dataclass
@@ -286,17 +288,34 @@ class YoloDetector:
         if not config.enabled:
             self.status_reason = "YOLO disabled"
             return
-        if not config.path:
-            self.status_reason = "Model path missing"
-            return
+        model_path = self.resolve_model_path(
+            config.path.strip() or DEFAULT_YOLO_MODEL_PATH
+        )
 
         try:
             from ultralytics import YOLO
 
-            self.model = YOLO(config.path)
+            self.model = YOLO(model_path)
         except Exception as exc:
             self.model = None
             self.status_reason = f"YOLO unavailable: {exc}"
+
+    @staticmethod
+    def resolve_model_path(path_value: str) -> str:
+        path = Path(path_value)
+        if path.is_absolute():
+            return str(path)
+
+        candidates: list[Path] = []
+        if path_value.startswith("assets/") or path_value.startswith("assets\\"):
+            candidates.append(Path(__file__).resolve().parent.parent / path)
+        candidates.append(Path.cwd() / path)
+        candidates.append(Path(__file__).resolve().parent / path)
+
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+        return str(candidates[0])
 
     def apply_config(self, config: YoloConfig):
         reload_required = (
@@ -333,7 +352,7 @@ class YoloDetector:
                 class_id = (
                     int(detection.cls.item()) if detection.cls is not None else -1
                 )
-                label = (
+                _label : str = (
                     names.get(class_id, str(class_id))
                     if isinstance(names, dict)
                     else str(class_id)
@@ -345,7 +364,7 @@ class YoloDetector:
                         x2=int(xyxy[2]),
                         y2=int(xyxy[3]),
                         confidence=confidence,
-                        label=label,
+                        label="hand",
                     )
                 )
                 confidences.append(confidence)

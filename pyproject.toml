@@ -5,6 +5,8 @@ dependencies = [
   "customtkinter",
   "opencv-python",
   "pillow",
+  "ultralytics",
+  "gpiozero",
 ]
 extend-exclude = [
     "*.pyc",

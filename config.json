@@ -42,7 +42,7 @@
     },
     "yolo": {
         "enabled": true,
-        "path": "",
+        "path": "assets/main.pt",
         "min_confidence": 0.4
     },
     "capture": {
@@ -51,7 +51,7 @@
             "y": 720
         },
         "enabled": true,
-        "use_webcam": true,
-        "ip_address": "http://192.168.100.109:8080/video"
+        "use_webcam": false,
+        "ip_address": "http://192.168.0.102:8080/video"
     }
 }

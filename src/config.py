@@ -32,7 +32,7 @@ class ServoPinsConfig:
 @dataclass
 class YoloConfig:
     enabled: bool = True
-    path: str = ""
+    path: str = "assets/main.pt"
     min_confidence: float = 0.4
 
 
