@@ -45,6 +45,7 @@ class CaptureConfig:
         }
     )
     enabled: bool = True
+    capture_fps: int = 10
     use_webcam: bool = True
     ip_address: str = "http://192.168.100.109:8080/video"
 

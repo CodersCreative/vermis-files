@@ -52,6 +52,7 @@
         },
         "enabled": true,
         "use_webcam": false,
+        "capture_fps": 10,
         "ip_address": "http://192.168.0.102:8080/video"
     }
 }

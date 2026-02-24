@@ -209,6 +209,40 @@ class ServoRig:
         self.arms = []
         self.pumps = []
 
+    def manual_targets(self) -> list[str]:
+        targets: list[str] = []
+        for role, channels in (
+            ("Link", self.linkages),
+            ("Arm", self.arms),
+            ("Pump", self.pumps),
+        ):
+            for channel in channels:
+                targets.append(f"{role}:{channel.pin}")
+        return targets
+
+    def set_manual_angle(self, target: str, angle: float, force: bool = True) -> bool:
+        try:
+            role, pin_text = target.split(":", 1)
+            pin = int(pin_text)
+        except Exception:
+            return False
+
+        channels: list[ServoChannel]
+        if role == "Link":
+            channels = self.linkages
+        elif role == "Arm":
+            channels = self.arms
+        elif role == "Pump":
+            channels = self.pumps
+        else:
+            return False
+
+        for channel in channels:
+            if channel.pin == pin:
+                channel.set_angle(angle, force=force)
+                return True
+        return False
+
     @property
     def total_channels(self) -> int:
         return len(self.linkages) + len(self.arms) + len(self.pumps)
@@ -352,7 +386,7 @@ class YoloDetector:
                 class_id = (
                     int(detection.cls.item()) if detection.cls is not None else -1
                 )
-                _label : str = (
+                _label: str = (
                     names.get(class_id, str(class_id))
                     if isinstance(names, dict)
                     else str(class_id)

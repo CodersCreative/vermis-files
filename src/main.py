@@ -71,6 +71,11 @@ class App(ctk.CTk):
         self.spray_controller = SprayController(self.servo_rig, self.get_last_detection)
         self.arm_raise_stage = 0
         self.started_at = time.monotonic()
+        self.manual_control_enabled = False
+        self.manual_target = "None"
+        self.manual_clamp_enabled = False
+        self.manual_clamp_min = 0.0
+        self.manual_clamp_max = 360.0
 
         self.video_widget = ctk.CTkLabel(self, text="")
         self.video_widget.pack(fill="both", expand=True)
@@ -80,9 +85,14 @@ class App(ctk.CTk):
             on_pause=self.toggle_pause,
             on_spray=self.manual_spray,
             on_rise=self.raise_arm,
+            on_manual_toggle=self.set_manual_control,
+            on_manual_target=self.set_manual_target,
+            on_manual_angle=self.set_manual_angle,
+            on_manual_clamp_toggle=self.set_manual_clamp,
         )
         self.overlay.place(x=10, y=10)
         self.update_servo_status()
+        self.overlay.set_manual_targets(self.servo_rig.manual_targets())
 
         self.settings: SettingsPopUp | None = None
 
@@ -103,6 +113,7 @@ class App(ctk.CTk):
         self.capture_manager.apply_config(self.config.capture)
         self.yolo_detector.apply_config(self.config.yolo)
         self.servo_rig.apply_config(self.config.servo_pins)
+        self.overlay.set_manual_targets(self.servo_rig.manual_targets())
         self.update_servo_status()
 
     def update_servo_status(self):
@@ -166,7 +177,11 @@ class App(ctk.CTk):
         )
         self.video_widget.configure(image=photo_image)
         self.video_widget.image = photo_image
-        self.video_widget.after(25, self.start_camera)
+        self.video_widget.after(self.frame_interval_ms(), self.start_camera)
+
+    def frame_interval_ms(self) -> int:
+        fps = max(1, int(self.config.capture.capture_fps))
+        return max(1, int(1000 / fps))
 
     def fit_frame_to_widget(self, frame, target_width: int, target_height: int):
         frame_height, frame_width = frame.shape[:2]
@@ -229,14 +244,53 @@ class App(ctk.CTk):
             return "N/A"
 
     def toggle_pause(self):
+        if self.manual_control_enabled:
+            return
         self.spray_controller.set_paused(not self.spray_controller.is_paused)
 
     def manual_spray(self):
         self.spray_controller.manual_spray()
 
     def raise_arm(self):
+        if self.manual_control_enabled:
+            return
         self.arm_raise_stage = (self.arm_raise_stage + 1) % 4
         self.servo_rig.set_arm_height(self.arm_raise_stage / 3, force=True)
+
+    def set_manual_control(self, enabled: bool):
+        self.manual_control_enabled = enabled
+        self.spray_controller.set_paused(enabled)
+        self.overlay.set_paused_state(self.spray_controller.is_paused)
+
+    def set_manual_target(self, target: str):
+        self.manual_target = target
+
+    def set_manual_clamp(self, enabled: bool, min_text: str, max_text: str):
+        self.manual_clamp_enabled = enabled
+        try:
+            clamp_min = float(min_text)
+            clamp_max = float(max_text)
+        except ValueError:
+            if not enabled:
+                self.overlay.set_manual_angle_range(0.0, 360.0)
+            return
+        if clamp_max < clamp_min:
+            clamp_min, clamp_max = clamp_max, clamp_min
+        self.manual_clamp_min = clamp_min
+        self.manual_clamp_max = clamp_max
+        if enabled:
+            self.overlay.set_manual_angle_range(clamp_min, clamp_max)
+        else:
+            self.overlay.set_manual_angle_range(0.0, 360.0)
+
+    def set_manual_angle(self, angle: float):
+        if not self.manual_control_enabled:
+            return
+        if self.manual_clamp_enabled:
+            angle = max(self.manual_clamp_min, min(angle, self.manual_clamp_max))
+        if self.manual_target == "None":
+            return
+        self.servo_rig.set_manual_angle(self.manual_target, angle, force=True)
 
     def open_settings(self):
         if self.settings is not None and self.settings.winfo_exists():

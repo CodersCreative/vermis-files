@@ -31,12 +31,15 @@ class SettingsPopUp(ctk.CTkToplevel):
 
         self.resolution_x = ctk.IntVar(value=master.config.capture.resolution["x"])
         self.resolution_y = ctk.IntVar(value=master.config.capture.resolution["y"])
+        self.capture_fps = ctk.IntVar(value=master.config.capture.capture_fps)
         self.ip_address = ctk.StringVar(value=master.config.capture.ip_address)
         self.use_webcam = ctk.BooleanVar(value=master.config.capture.use_webcam)
         self.capture_enabled = ctk.BooleanVar(value=master.config.capture.enabled)
 
         self.min_confidence = ctk.DoubleVar(value=master.config.yolo.min_confidence)
-        self.yolo_path = ctk.StringVar(value=master.config.yolo.path or "assets/main.pt")
+        self.yolo_path = ctk.StringVar(
+            value=master.config.yolo.path or "assets/main.pt"
+        )
         self.yolo_enabled = ctk.BooleanVar(value=master.config.yolo.enabled)
 
         self.status_text = ctk.StringVar(value="")
@@ -331,6 +334,15 @@ class SettingsPopUp(ctk.CTkToplevel):
             side="left", pady=PADDING_SMALL, fill="x", padx=(PADDING_SMALL, 0)
         )
 
+        capture_fps = NamedSlider(
+            container,
+            label="Capture FPS",
+            input_var=self.capture_fps,
+            from_=1,
+            to=120,
+        )
+        capture_fps.pack(pady=PADDING_SMALL, fill="x")
+
         ip_address = NamedEntry(
             container, input_var=self.ip_address, label="IP Address"
         )
@@ -384,6 +396,7 @@ class SettingsPopUp(ctk.CTkToplevel):
         config.capture.ip_address = self.ip_address.get().strip()
         config.capture.resolution["x"] = max(160, self.resolution_x.get())
         config.capture.resolution["y"] = max(120, self.resolution_y.get())
+        config.capture.capture_fps = max(1, min(120, int(self.capture_fps.get())))
         config.capture.use_webcam = self.use_webcam.get()
 
         config.yolo.enabled = self.yolo_enabled.get()
