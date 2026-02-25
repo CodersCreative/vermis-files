@@ -12,6 +12,9 @@ class ServoPinConfig:
     max_angle: float = 360.0
     deadband_degrees: float = 1.5
     command_interval_seconds: float = 0.08
+    clamp_enabled: bool = False
+    clamp_min_angle: float = 0.0
+    clamp_max_angle: float = 360.0
 
 
 @dataclass

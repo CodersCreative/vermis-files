@@ -8,7 +8,10 @@
             "min_angle": 0.0,
             "max_angle": 360.0,
             "deadband_degrees": 1.5,
-            "command_interval_seconds": 0.08
+            "command_interval_seconds": 0.08,
+            "clamp_enabled": false,
+            "clamp_min_angle": 0.0,
+            "clamp_max_angle": 360.0
         },
         "servos": [
             {
@@ -18,7 +21,10 @@
                 "min_angle": 0.0,
                 "max_angle": 360.0,
                 "deadband_degrees": 1.5,
-                "command_interval_seconds": 0.08
+                "command_interval_seconds": 0.08,
+                "clamp_enabled": false,
+                "clamp_min_angle": 0.0,
+                "clamp_max_angle": 20.0
             },
             {
                 "role": "Arm",
@@ -27,16 +33,22 @@
                 "min_angle": 0.0,
                 "max_angle": 360.0,
                 "deadband_degrees": 1.5,
-                "command_interval_seconds": 0.08
+                "command_interval_seconds": 0.08,
+                "clamp_enabled": false,
+                "clamp_min_angle": 0.0,
+                "clamp_max_angle": 360.0
             },
             {
                 "role": "Pump",
-                "pin": 4,
+                "pin": 10,
                 "angle_offset": 0.0,
                 "min_angle": 0.0,
                 "max_angle": 360.0,
                 "deadband_degrees": 1.5,
-                "command_interval_seconds": 0.08
+                "command_interval_seconds": 0.08,
+                "clamp_enabled": false,
+                "clamp_min_angle": 0.0,
+                "clamp_max_angle": 90.0
             }
         ]
     },
@@ -51,8 +63,8 @@
             "y": 720
         },
         "enabled": true,
+        "capture_fps": 60,
         "use_webcam": false,
-        "capture_fps": 10,
         "ip_address": "http://192.168.0.102:8080/video"
     }
 }

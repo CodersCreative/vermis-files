@@ -12,6 +12,7 @@ class Overlay(ctk.CTkFrame):
         on_rise,
         on_manual_toggle,
         on_manual_row_apply,
+        on_manual_row_save_clamp,
         **kwargs,
     ):
         super().__init__(master, fg_color=TEXT_COLOUR, **kwargs)
@@ -158,6 +159,7 @@ class Overlay(ctk.CTkFrame):
         self.manual_panel_open = False
         self.manual_enabled = ctk.BooleanVar(value=False)
         self.manual_row_apply = on_manual_row_apply
+        self.manual_row_save_clamp = on_manual_row_save_clamp
         self.manual_rows: dict[str, dict[str, object]] = {}
 
         self.manual_dropdown_button = ctk.CTkButton(
@@ -218,7 +220,12 @@ class Overlay(ctk.CTkFrame):
         color = DANGER_COLOUR if paused else "transparent"
         self.pause_button.configure(fg_color=color)
 
-    def set_manual_targets(self, targets: list[str]):
+    def set_manual_targets(
+        self,
+        targets: list[str],
+        saved_clamps: dict[str, tuple[bool, float, float]] | None = None,
+    ):
+        saved_clamps = saved_clamps or {}
         existing_state: dict[str, dict[str, str]] = {}
         for target, row in self.manual_rows.items():
             existing_state[target] = {
@@ -246,12 +253,29 @@ class Overlay(ctk.CTkFrame):
             action_row.pack(fill="x", pady=(2, 0))
 
             previous = existing_state.get(target, {})
+            saved = saved_clamps.get(target)
             angle_var = ctk.StringVar(value=previous.get("angle", "0"))
             clamp_enabled_var = ctk.BooleanVar(
-                value=previous.get("clamp_enabled", "0") == "1"
+                value=(
+                    previous.get("clamp_enabled", "0") == "1"
+                    if previous
+                    else (saved[0] if saved else False)
+                )
             )
-            clamp_min_var = ctk.StringVar(value=previous.get("clamp_min", "0"))
-            clamp_max_var = ctk.StringVar(value=previous.get("clamp_max", "360"))
+            clamp_min_var = ctk.StringVar(
+                value=(
+                    previous.get("clamp_min", "0")
+                    if previous
+                    else (str(saved[1]) if saved else "0")
+                )
+            )
+            clamp_max_var = ctk.StringVar(
+                value=(
+                    previous.get("clamp_max", "360")
+                    if previous
+                    else (str(saved[2]) if saved else "360")
+                )
+            )
 
             ctk.CTkLabel(
                 top_row, text=target, width=72, anchor="w", text_color=TEXT_COLOUR
@@ -295,7 +319,18 @@ class Overlay(ctk.CTkFrame):
                 fg_color=ACCENT_COLOUR,
                 text_color=DEFAULT_COLOUR,
             )
-            apply_button.pack(fill="x")
+            apply_button.pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+            save_button = ctk.CTkButton(
+                action_row,
+                text="Save",
+                width=1,
+                height=24,
+                fg_color=DEFAULT_COLOUR,
+                hover_color=ACCENT_COLOUR,
+                text_color=TEXT_COLOUR,
+            )
+            save_button.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
             ctk.CTkLabel(
                 clamp_row, text="Min", width=30, anchor="w", text_color=TEXT_COLOUR
@@ -333,6 +368,9 @@ class Overlay(ctk.CTkFrame):
             )
             clamp_checkbox.configure(command=apply_row)
             apply_button.configure(command=apply_row)
+            save_button.configure(
+                command=lambda t=target: self.save_manual_row_clamp(t)
+            )
 
             self.update_row_slider_range(target)
 
@@ -393,6 +431,17 @@ class Overlay(ctk.CTkFrame):
         self.manual_row_apply(
             target,
             row["angle_var"].get(),
+            row["clamp_enabled_var"].get(),
+            row["clamp_min_var"].get(),
+            row["clamp_max_var"].get(),
+        )
+
+    def save_manual_row_clamp(self, target: str):
+        row = self.manual_rows.get(target)
+        if row is None:
+            return
+        self.manual_row_save_clamp(
+            target,
             row["clamp_enabled_var"].get(),
             row["clamp_min_var"].get(),
             row["clamp_max_var"].get(),

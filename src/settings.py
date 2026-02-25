@@ -261,6 +261,13 @@ class SettingsPopUp(ctk.CTkToplevel):
 
         seen_pins: set[int] = set()
         servos: list[ServoPinConfig] = []
+        existing_clamps: dict[tuple[str, int], tuple[bool, float, float]] = {}
+        for servo_cfg in self.master.config.servo_pins.servos:
+            existing_clamps[(servo_cfg.role, int(servo_cfg.pin))] = (
+                bool(servo_cfg.clamp_enabled),
+                float(servo_cfg.clamp_min_angle),
+                float(servo_cfg.clamp_max_angle),
+            )
 
         for row in self.servo_rows:
             role = str(row["role"].get()).strip()
@@ -276,6 +283,9 @@ class SettingsPopUp(ctk.CTkToplevel):
                 raise ValueError(f"Invalid servo type '{role}'")
 
             try:
+                clamp_enabled, clamp_min, clamp_max = existing_clamps.get(
+                    (role, pin), (False, 0.0, 360.0)
+                )
                 servos.append(
                     ServoPinConfig(
                         role=role,
@@ -285,6 +295,9 @@ class SettingsPopUp(ctk.CTkToplevel):
                         max_angle=float(row["max"].get()),
                         deadband_degrees=max(0.0, float(row["deadband"].get())),
                         command_interval_seconds=max(0.0, float(row["interval"].get())),
+                        clamp_enabled=clamp_enabled,
+                        clamp_min_angle=clamp_min,
+                        clamp_max_angle=clamp_max,
                     )
                 )
             except ValueError as exc:

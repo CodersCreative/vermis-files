@@ -84,10 +84,13 @@ class App(ctk.CTk):
             on_rise=self.raise_arm,
             on_manual_toggle=self.set_manual_control,
             on_manual_row_apply=self.apply_manual_row,
+            on_manual_row_save_clamp=self.save_manual_row_clamp,
         )
         self.overlay.place(x=10, y=10)
         self.update_servo_status()
-        self.overlay.set_manual_targets(self.servo_rig.manual_targets())
+        self.overlay.set_manual_targets(
+            self.servo_rig.manual_targets(), self.manual_clamp_map()
+        )
 
         self.settings: SettingsPopUp | None = None
 
@@ -108,8 +111,21 @@ class App(ctk.CTk):
         self.capture_manager.apply_config(self.config.capture)
         self.yolo_detector.apply_config(self.config.yolo)
         self.servo_rig.apply_config(self.config.servo_pins)
-        self.overlay.set_manual_targets(self.servo_rig.manual_targets())
+        self.overlay.set_manual_targets(
+            self.servo_rig.manual_targets(), self.manual_clamp_map()
+        )
         self.update_servo_status()
+
+    def manual_clamp_map(self) -> dict[str, tuple[bool, float, float]]:
+        mapping: dict[str, tuple[bool, float, float]] = {}
+        for servo_cfg in self.config.servo_pins.servos:
+            key = f"{servo_cfg.role}:{servo_cfg.pin}"
+            mapping[key] = (
+                bool(servo_cfg.clamp_enabled),
+                float(servo_cfg.clamp_min_angle),
+                float(servo_cfg.clamp_max_angle),
+            )
+        return mapping
 
     def update_servo_status(self):
         if self.servo_rig.total_channels == 0:
@@ -284,6 +300,50 @@ class App(ctk.CTk):
             return
 
         self.servo_rig.set_manual_angle(target, angle, force=True)
+
+    def save_manual_row_clamp(
+        self, target: str, clamp_enabled: bool, min_text: str, max_text: str
+    ):
+        try:
+            clamp_min = float(min_text)
+            clamp_max = float(max_text)
+        except ValueError:
+            return
+        if clamp_max < clamp_min:
+            clamp_min, clamp_max = clamp_max, clamp_min
+        self.persist_clamp(target, clamp_enabled, clamp_min, clamp_max)
+
+    def persist_clamp(
+        self, target: str, clamp_enabled: bool, clamp_min: float, clamp_max: float
+    ):
+        changed = False
+
+        def apply_to(role: str, pin: int):
+            nonlocal changed
+            for servo_cfg in self.config.servo_pins.servos:
+                if servo_cfg.role == role and servo_cfg.pin == pin:
+                    if (
+                        bool(servo_cfg.clamp_enabled) != bool(clamp_enabled)
+                        or float(servo_cfg.clamp_min_angle) != clamp_min
+                        or float(servo_cfg.clamp_max_angle) != clamp_max
+                    ):
+                        servo_cfg.clamp_enabled = bool(clamp_enabled)
+                        servo_cfg.clamp_min_angle = clamp_min
+                        servo_cfg.clamp_max_angle = clamp_max
+                        changed = True
+                    break
+
+        if target == "ALL":
+            for t in self.servo_rig.manual_targets():
+                role, pin_text = t.split(":", 1)
+                apply_to(role, int(pin_text))
+        else:
+            role, pin_text = target.split(":", 1)
+            apply_to(role, int(pin_text))
+
+        if changed:
+            self.config.save_to_file(CONFIG_PATH)
+            self.servo_rig.apply_config(self.config.servo_pins)
 
     def open_settings(self):
         if self.settings is not None and self.settings.winfo_exists():

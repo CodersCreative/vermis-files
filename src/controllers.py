@@ -40,6 +40,8 @@ class ServoChannel:
         angle_offset: float = 0.0,
         deadband_degrees: float = 1.5,
         min_command_interval: float = 0.08,
+        off_angle: float | None = None,
+        on_angle: float | None = None,
     ):
         self.pin = pin
         self.min_angle = min_angle
@@ -47,6 +49,8 @@ class ServoChannel:
         self.angle_offset = angle_offset
         self.deadband_degrees = deadband_degrees
         self.min_command_interval = min_command_interval
+        self.off_angle = min_angle if off_angle is None else off_angle
+        self.on_angle = max_angle if on_angle is None else on_angle
         self.last_commanded_angle: float | None = None
         self.last_command_time = 0.0
 
@@ -161,6 +165,27 @@ class ServoRig:
         if max_angle < min_angle:
             min_angle, max_angle = max_angle, min_angle
 
+        clamp_enabled = bool(
+            servo_cfg.clamp_enabled
+            if servo_cfg.clamp_enabled is not None
+            else default_cfg.clamp_enabled
+        )
+        clamp_min = float(
+            servo_cfg.clamp_min_angle
+            if servo_cfg.clamp_min_angle is not None
+            else default_cfg.clamp_min_angle
+        )
+        clamp_max = float(
+            servo_cfg.clamp_max_angle
+            if servo_cfg.clamp_max_angle is not None
+            else default_cfg.clamp_max_angle
+        )
+        if clamp_max < clamp_min:
+            clamp_min, clamp_max = clamp_max, clamp_min
+
+        off_angle = clamp_min if clamp_enabled else min_angle
+        on_angle = clamp_max if clamp_enabled else max_angle
+
         return ServoChannel(
             servo_cfg.pin,
             min_angle=min_angle,
@@ -186,6 +211,8 @@ class ServoRig:
                     else default_cfg.command_interval_seconds
                 ),
             ),
+            off_angle=off_angle,
+            on_angle=on_angle,
         )
 
     def apply_config(self, config: ServoPinsConfig):
@@ -198,8 +225,8 @@ class ServoRig:
     def set_linkages(self, active: bool, force: bool = False):
         with self._lock:
             self.linkages_active = active
-            target = 30 if active else 0
             for servo in self.linkages:
+                target = servo.on_angle if active else servo.off_angle
                 servo.set_angle(target, force=force)
 
     def set_arm_height(self, percent: float, force: bool = False):
@@ -212,8 +239,8 @@ class ServoRig:
     def set_pumps(self, active: bool, force: bool = False):
         with self._lock:
             self.pumps_active = active
-            target = 50 if active else 0
             for servo in self.pumps:
+                target = servo.on_angle if active else servo.off_angle
                 servo.set_angle(target, force=force)
 
     def shutdown(self):
