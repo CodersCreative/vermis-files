@@ -52,6 +52,7 @@ class ServoChannel:
 
         self.servo = None
         self.is_available = False
+        self.init_error: str | None = None
 
         try:
             from gpiozero import AngularServo
@@ -66,8 +67,21 @@ class ServoChannel:
                 pin_factory=PiGPIOFactory(),
             )
             self.is_available = True
-        except Exception:
-            self.is_available = False
+        except Exception as exc:
+            try:
+                from gpiozero import AngularServo
+
+                self.servo = AngularServo(
+                    pin,
+                    min_angle=min_angle,
+                    max_angle=max_angle,
+                    min_pulse_width=0.5 / 1000,
+                    max_pulse_width=2.5 / 1000,
+                )
+                self.is_available = True
+            except Exception as fallback_exc:
+                self.is_available = False
+                self.init_error = f"pigpio={exc}; fallback={fallback_exc}"
 
     @property
     def available(self) -> bool:

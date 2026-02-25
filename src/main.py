@@ -69,6 +69,7 @@ class App(ctk.CTk):
 
         self.last_detection = DetectionResult(0.0, [], False, "Waiting for frame")
         self.spray_controller = SprayController(self.servo_rig, self.get_last_detection)
+        self.spray_controller.set_paused(True)
         self.arm_raise_stage = 0
         self.started_at = time.monotonic()
         self.manual_control_enabled = False
