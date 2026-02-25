@@ -73,10 +73,6 @@ class App(ctk.CTk):
         self.arm_raise_stage = 0
         self.started_at = time.monotonic()
         self.manual_control_enabled = False
-        self.manual_target = "None"
-        self.manual_clamp_enabled = False
-        self.manual_clamp_min = 0.0
-        self.manual_clamp_max = 360.0
 
         self.video_widget = ctk.CTkLabel(self, text="")
         self.video_widget.pack(fill="both", expand=True)
@@ -87,9 +83,7 @@ class App(ctk.CTk):
             on_spray=self.manual_spray,
             on_rise=self.raise_arm,
             on_manual_toggle=self.set_manual_control,
-            on_manual_target=self.set_manual_target,
-            on_manual_angle=self.set_manual_angle,
-            on_manual_clamp_toggle=self.set_manual_clamp,
+            on_manual_row_apply=self.apply_manual_row,
         )
         self.overlay.place(x=10, y=10)
         self.update_servo_status()
@@ -263,35 +257,33 @@ class App(ctk.CTk):
         self.spray_controller.set_paused(enabled)
         self.overlay.set_paused_state(self.spray_controller.is_paused)
 
-    def set_manual_target(self, target: str):
-        self.manual_target = target
-
-    def set_manual_clamp(self, enabled: bool, min_text: str, max_text: str):
-        self.manual_clamp_enabled = enabled
+    def apply_manual_row(
+        self,
+        target: str,
+        angle_text: str,
+        clamp_enabled: bool,
+        min_text: str,
+        max_text: str,
+    ):
+        if not self.manual_control_enabled:
+            return
         try:
+            angle = float(angle_text)
             clamp_min = float(min_text)
             clamp_max = float(max_text)
         except ValueError:
-            if not enabled:
-                self.overlay.set_manual_angle_range(0.0, 360.0)
             return
         if clamp_max < clamp_min:
             clamp_min, clamp_max = clamp_max, clamp_min
-        self.manual_clamp_min = clamp_min
-        self.manual_clamp_max = clamp_max
-        if enabled:
-            self.overlay.set_manual_angle_range(clamp_min, clamp_max)
-        else:
-            self.overlay.set_manual_angle_range(0.0, 360.0)
+        if clamp_enabled:
+            angle = max(clamp_min, min(angle, clamp_max))
 
-    def set_manual_angle(self, angle: float):
-        if not self.manual_control_enabled:
+        if target == "ALL":
+            for per_target in self.servo_rig.manual_targets():
+                self.servo_rig.set_manual_angle(per_target, angle, force=True)
             return
-        if self.manual_clamp_enabled:
-            angle = max(self.manual_clamp_min, min(angle, self.manual_clamp_max))
-        if self.manual_target == "None":
-            return
-        self.servo_rig.set_manual_angle(self.manual_target, angle, force=True)
+
+        self.servo_rig.set_manual_angle(target, angle, force=True)
 
     def open_settings(self):
         if self.settings is not None and self.settings.winfo_exists():
