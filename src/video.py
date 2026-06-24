@@ -5,6 +5,7 @@ import time
 from fastapi import Response
 from nicegui import app, ui
 
+
 def get_placeholder() -> Response:
     black = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjYGBg+A8AAQQBAHAgZQsAAAAASUVORK5CYII="
     return Response(
@@ -17,17 +18,17 @@ class VideoManager:
     _registry_lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls, key : str, source):
+    def get_instance(cls, key: str, source):
         with cls._registry_lock:
             if key not in cls._instances:
                 cls._instances[key] = cls(key, source)
             elif cls._instances[key].source != source:
                 cls._instances[key].shutdown()
                 cls._instances[key] = cls(key, source)
-                
+
             return cls._instances[key]
 
-    def __init__(self, key : str, source):
+    def __init__(self, key: str, source):
         self.source = source
         self.key = key
         self.cap = cv2.VideoCapture(source)
@@ -37,7 +38,7 @@ class VideoManager:
         self.thread_running = True
         self.worker = threading.Thread(target=self.video_worker, daemon=True)
         self.worker.start()
-        self.route_path = f"/video/stream/{key}"        
+        self.route_path = f"/video/stream/{key}"
 
         self.register_route()
 
@@ -83,13 +84,13 @@ class VideoManager:
 
 
 class CV2Video:
-    def __init__(self, key : str, source=0):
+    def __init__(self, key: str, source=0):
         self.manager = VideoManager.get_instance(key, source)
         self.video = None
         self.key = key
 
     def change_source(self, source=0):
-        self.manager = VideoManager.get_instance(self.key, source)        
+        self.manager = VideoManager.get_instance(self.key, source)
 
     def render(self):
         self.video = ui.interactive_image(self.manager.route_path).classes(

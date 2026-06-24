@@ -1,70 +1,75 @@
 {
-    "servo_pins": {
-        "linkage_hold_time": 1.0,
-        "defaults": {
-            "role": "Default",
-            "pin": 0,
-            "angle_offset": 0.0,
-            "min_angle": 0.0,
-            "max_angle": 360.0,
-            "deadband_degrees": 1.5,
-            "command_interval_seconds": 0.08,
-            "clamp_enabled": false,
-            "clamp_min_angle": 0.0,
-            "clamp_max_angle": 360.0
-        },
-        "servos": [
-            {
-                "role": "Link",
-                "pin": 15,
-                "angle_offset": 0.0,
-                "min_angle": 0.0,
-                "max_angle": 360.0,
-                "deadband_degrees": 1.5,
-                "command_interval_seconds": 0.08,
-                "clamp_enabled": false,
-                "clamp_min_angle": 0.0,
-                "clamp_max_angle": 20.0
-            },
-            {
-                "role": "Arm",
-                "pin": 14,
-                "angle_offset": 0.0,
-                "min_angle": 0.0,
-                "max_angle": 360.0,
-                "deadband_degrees": 1.5,
-                "command_interval_seconds": 0.08,
-                "clamp_enabled": false,
-                "clamp_min_angle": 0.0,
-                "clamp_max_angle": 360.0
-            },
-            {
-                "role": "Pump",
-                "pin": 10,
-                "angle_offset": 0.0,
-                "min_angle": 0.0,
-                "max_angle": 360.0,
-                "deadband_degrees": 1.5,
-                "command_interval_seconds": 0.08,
-                "clamp_enabled": false,
-                "clamp_min_angle": 0.0,
-                "clamp_max_angle": 90.0
-            }
-        ]
+    "capture": {
+        "enabled": true,
+        "fps": 30,
+        "forward_source": 0,
+        "backward_source": 0,
+        "arm_source": 0
     },
     "yolo": {
         "enabled": true,
-        "path": "assets/main.pt",
+        "model_path": "assets/main.pt",
         "min_confidence": 0.4
     },
-    "capture": {
-        "resolution": {
-            "x": 1280,
-            "y": 720
+    "motors_enabled": true,
+    "motors": [
+        {
+            "enabled": true,
+            "pin": 12,
+            "min_speed": 0,
+            "max_speed": 1.0,
+            "left": true,
+            "reversed": false
         },
-        "enabled": true,
-        "capture_fps": 60,
-        "use_webcam": false,
-        "ip_address": "http://192.168.0.102:8080/video"
-    }
+        {
+            "enabled": true,
+            "pin": 13,
+            "min_speed": 0,
+            "max_speed": 1.0,
+            "left": false,
+            "reversed": true
+        }
+    ],
+    "pumps_enabled": true,
+    "pumps": [
+        {
+            "enabled": true,
+            "forward_pin": 25,
+            "backward_pin": 24,
+            "enable_pin": 9
+        }
+    ],
+    "servos_enabled": true,
+    "servos": [
+        {
+            "enabled": true,
+            "pin": 6,
+            "type": 0,
+            "min_angle": 0,
+            "max_angle": 360,
+            "offset": 0,
+            "deadband": 1.5,
+            "interval": 0.08
+        },
+        {
+            "enabled": true,
+            "pin": 5,
+            "type": 1,
+            "min_angle": 0,
+            "max_angle": 270,
+            "offset": 0,
+            "deadband": 1.5,
+            "interval": 0.08
+        },
+        {
+            "enabled": true,
+            "pin": 26,
+            "type": 2,
+            "min_angle": 0,
+            "max_angle": 270,
+            "offset": 0,
+            "deadband": 1.5,
+            "interval": 0.08
+        }
+    ]
 }
