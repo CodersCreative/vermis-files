@@ -1,2 +1,4 @@
 gpiozero
 inputs
+nicegui
+fastapi

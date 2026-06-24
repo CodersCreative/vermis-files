@@ -7,7 +7,9 @@ dependencies = [
   "pillow",
   "ultralytics",
   "gpiozero",
-  "inputs"
+  "inputs",
+  "nicegui",
+  "fastapi"
 ]
 extend-exclude = [
     "*.pyc",
