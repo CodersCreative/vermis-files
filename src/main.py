@@ -1,4 +1,6 @@
 from nicegui import app, ui
+from screens.control import ControlScreen
+from screens.settings import SettingsScreen
 from video import CV2Video
 
 SOURCES = {
@@ -9,40 +11,20 @@ SOURCES = {
 
 class VermisApp:
     def __init__(self):
-        self.video = None
+        self.control = ControlScreen()
+        self.settings = SettingsScreen()
+        
 
-    def setup(self):
-        self.video = CV2Video("main", SOURCES["forward"])
-
-    def home(self):
-        with ui.tabs().classes("w-full h-full object-cover") as tabs:
-            ui.tab("forward")
-            ui.tab("backward")
-            ui.tab("arm")
-        with ui.tab_panels(tabs, value="forward").classes("w-full object-cover "):
-            with ui.tab_panel("forward"):
-                if self.video:
-                    self.video.change_source(SOURCES["forward"])
-                    self.video.render()
-            with ui.tab_panel("backward"):
-                if self.video:
-                    self.video.change_source(SOURCES["backward"])
-                    self.video.render()
-            with ui.tab_panel("arm"):
-                if self.video:
-                    self.video.change_source(SOURCES["arm"])                
-                    self.video.render()
-
-        with ui.card().classes("absolute-center z-10 shadow-lg"):
-            ui.label("Hello")
-
-instance = VermisApp()  # ("http://192.168.0.104:8080/video")
-instance.setup()
+vermis = VermisApp()  # ("http://192.168.0.104:8080/video")
 
 
 @ui.page("/")
-def index():
-    instance.home()
+def settings():
+    vermis.settings.render()
+
+@ui.page("/control/")
+def control():
+    vermis.control.render()
 
 
 if __name__ == "__main__":
