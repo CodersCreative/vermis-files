@@ -2,7 +2,6 @@
 name = "vermis"
 version = "0.0.1"
 dependencies = [
-  "customtkinter",
   "opencv-python",
   "pillow",
   "ultralytics",

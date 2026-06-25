@@ -2,3 +2,7 @@ gpiozero
 inputs
 nicegui
 fastapi
+opencv-python
+pillow
+ultralytics
+inputs

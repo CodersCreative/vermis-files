@@ -1,18 +1,20 @@
 from nicegui import app, ui
 from screens.control import ControlScreen
 from screens.settings import SettingsScreen
-from video import CV2Video
 from config import Config
 
 
 class VermisApp:
     def __init__(self):
         self.config = Config.load_from_file()
-        self.control = ControlScreen()
+        self.control = ControlScreen(self.config)
         self.settings = SettingsScreen()
 
+    def cleanup(self):
+        self.control.cleanup()
 
-vermis = VermisApp()  # ("http://192.168.0.104:8080/video")
+
+vermis = VermisApp()
 
 
 @ui.page("/")
@@ -23,6 +25,11 @@ def settings():
 @ui.page("/control/")
 def control():
     vermis.control.render()
+
+
+@app.on_shutdown
+def shutdown():
+    vermis.cleanup()
 
 
 if __name__ == "__main__":

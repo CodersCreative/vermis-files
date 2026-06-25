@@ -156,7 +156,7 @@ class Config:
             if servos_data
             else cls().servos,
             pumps_enabled=data.get("pumps_enabled", True),
-            pumps=[PumpConfig(**pump) for pump in servos_data]
+            pumps=[PumpConfig(**pump) for pump in pumps_data]
             if pumps_data
             else cls().pumps,
         )

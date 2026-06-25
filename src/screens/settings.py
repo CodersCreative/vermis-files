@@ -10,6 +10,13 @@ class SettingsScreen:
         self.config.save_to_file()
 
     def render(self):
+        with ui.card().classes("w-full p-2 mb-4"):
+            with ui.row().classes("justify-between items-center w-full"):
+                ui.label("Settings").classes("font-bold text-xl")
+                ui.button(
+                    "Start", on_click=lambda: ui.navigate.to("/control/")
+                ).classes("bg-blue-500 hover:bg-blue-600 text-white")
+
         with ui.expansion("Capture").classes("w-full"):
             with ui.card().classes("w-full"):
                 ui.checkbox(
