@@ -224,20 +224,23 @@ class ControlScreen:
                     )
 
             with ui.expansion("Pump", icon="water_drop").classes("w-full text-white"):
-                ui.button(
-                    "Pump",
-                    on_click=lambda: (
-                        setattr(self, "pump_forward", True),
-                        self.apply_controls(),
-                    ),
-                ).classes("bg-blue-500 hover:bg-blue-600 text-white w-full").on(
-                    "mouseup",
-                    lambda: (
-                        setattr(self, "pump_forward", False),
-                        self.apply_controls(),
-                    ),
-                )
+                with ui.row():
+                    ui.button(
+                        "Start",
+                        on_click=lambda: (
+                            setattr(self, "pump_forward", True),
+                            self.apply_controls(),
+                        ),
+                    )
 
+                    ui.button(
+                        "Stop",
+                        on_click=lambda: (
+                            setattr(self, "pump_forward", False),
+                            self.apply_controls(),
+                        ),
+                    )
+                    
             with ui.expansion("System", icon="settings").classes("w-full text-white"):
                 ui.button("Settings", on_click=lambda: ui.navigate.to("/")).classes(
                     "bg-blue-500 hover:bg-blue-600 text-white"
