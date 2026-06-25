@@ -46,11 +46,19 @@ class ControlScreen:
         self.use_controller = False
         self.running = False
 
-    def _on_mode_change(self, mode: str):
+    def on_mode_change(self, mode: str):
         if mode == "Controller":
             self.start_controller_thread()
         else:
             self.stop_controller_thread()
+
+    def get_servo_config_by_type(self, servo_type: int):
+        if not self.servo_controller:
+            return None
+        for config in self.config.servos:
+            if config.type == servo_type:
+                return config
+        return None
 
     def handle_controller(self):
         try:
@@ -61,9 +69,23 @@ class ControlScreen:
                 self.movement_forward = -state.left.y
                 self.movement_turn = state.left.x
 
-                self.arm_base = state.right.x * 180
-                self.arm_mid = -state.right.y * 90
-                self.arm_top = -state.right.y * 90
+                base = self.get_servo_config_by_type(0)
+                if base and base.continuous:
+                    self.arm_base = state.right.x
+                else:
+                    self.arm_base = state.right.x * 180
+
+                mid = self.get_servo_config_by_type(1)
+                if mid and mid.continuous:
+                    self.arm_mid = -state.right.y
+                else:
+                    self.arm_mid = -state.right.y * 90
+
+                top = self.get_servo_config_by_type(2)
+                if top and top.continuous:
+                    self.arm_top = -state.right.y
+                else:
+                    self.arm_top = -state.right.y * 90
 
                 self.pump_forward = state.a_button
 
@@ -153,26 +175,53 @@ class ControlScreen:
             with ui.expansion("Arm", icon="precision_manufacturing").classes(
                 "w-full text-white"
             ):
-                ui.label("Base").classes("text-sm text-white")
-                ui.slider(min=-180, max=180, value=0, step=1).props(
-                    "label-always dark"
-                ).bind_value(self, "arm_base").on(
-                    "change", lambda: self.apply_controls()
-                )
+                base = self.get_servo_config_by_type(0)
+                if base and base.continuous:
+                    ui.label("Base (Speed)").classes("text-sm text-white")
+                    ui.slider(min=-1, max=1, value=0, step=0.01).props(
+                        "label-always dark"
+                    ).bind_value(self, "arm_base").on(
+                        "change", lambda: self.apply_controls()
+                    )
+                else:
+                    ui.label("Base (Angle)").classes("text-sm text-white")
+                    ui.slider(min=-180, max=180, value=0, step=1).props(
+                        "label-always dark"
+                    ).bind_value(self, "arm_base").on(
+                        "change", lambda: self.apply_controls()
+                    )
 
-                ui.label("Mid").classes("text-sm text-white")
-                ui.slider(min=-90, max=90, value=0, step=1).props(
-                    "label-always dark"
-                ).bind_value(self, "arm_mid").on(
-                    "change", lambda: self.apply_controls()
-                )
+                mid = self.get_servo_config_by_type(1)
+                if mid and mid.continuous:
+                    ui.label("Mid (Speed)").classes("text-sm text-white")
+                    ui.slider(min=-1, max=1, value=0, step=0.01).props(
+                        "label-always dark"
+                    ).bind_value(self, "arm_mid").on(
+                        "change", lambda: self.apply_controls()
+                    )
+                else:
+                    ui.label("Mid (Angle)").classes("text-sm text-white")
+                    ui.slider(min=-90, max=90, value=0, step=1).props(
+                        "label-always dark"
+                    ).bind_value(self, "arm_mid").on(
+                        "change", lambda: self.apply_controls()
+                    )
 
-                ui.label("Top").classes("text-sm text-white")
-                ui.slider(min=-90, max=90, value=0, step=1).props(
-                    "label-always dark"
-                ).bind_value(self, "arm_top").on(
-                    "change", lambda: self.apply_controls()
-                )
+                top = self.get_servo_config_by_type(2)
+                if top and top.continuous:
+                    ui.label("Top (Speed)").classes("text-sm text-white")
+                    ui.slider(min=-1, max=1, value=0, step=0.01).props(
+                        "label-always dark"
+                    ).bind_value(self, "arm_top").on(
+                        "change", lambda: self.apply_controls()
+                    )
+                else:
+                    ui.label("Top (Angle)").classes("text-sm text-white")
+                    ui.slider(min=-90, max=90, value=0, step=1).props(
+                        "label-always dark"
+                    ).bind_value(self, "arm_top").on(
+                        "change", lambda: self.apply_controls()
+                    )
 
             with ui.expansion("Pump", icon="water_drop").classes("w-full text-white"):
                 ui.button(
@@ -193,12 +242,15 @@ class ControlScreen:
                 ui.button("Settings", on_click=lambda: ui.navigate.to("/")).classes(
                     "bg-blue-500 hover:bg-blue-600 text-white"
                 )
+
                 ui.label("Control Mode").classes("text-sm text-white mb-2")
+
                 ui.toggle(
                     ["Manual", "Controller"],
                     value="Manual",
-                    on_change=lambda e: self._on_mode_change(e.value),
+                    on_change=lambda e: self.on_mode_change(e.value),
                 ).classes("text-white")
+                
                 ui.button("Stop All", on_click=self.stop_all).classes(
                     "bg-red-500 hover:bg-red-600 text-white w-full mt-2"
                 )

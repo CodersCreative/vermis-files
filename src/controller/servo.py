@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from config import ServoConfig, ServoType
 
 try:
-    from gpiozero import AngularServo
+    from gpiozero import AngularServo, Servo
     from gpiozero.pins.lgpio import LGPIOFactory
 
     GPIOZERO_AVAILABLE = True
@@ -13,9 +13,9 @@ except ImportError:
 
 @dataclass
 class ArmState:
-    base_angle: float = 0.0
-    mid_angle: float = 0.0
-    top_angle: float = 0.0
+    base: float = 0.0
+    mid: float = 0.0
+    top: float = 0.0
 
 
 class ServoController:
@@ -35,18 +35,40 @@ class ServoController:
 
             for config in self.configs:
                 if config.enabled:
-                    servo = AngularServo(
-                        config.pin,
-                        pin_factory=self.factory,
-                        min_angle=config.min_angle,
-                        max_angle=config.max_angle,
-                        min_pulse_width=0.5 / 1000,
-                        max_pulse_width=2.5 / 1000,
-                    )
-                    self.servos.append(
-                        {"servo": servo, "config": config, "last_angle": config.offset}
-                    )
-                    servo.angle = config.offset
+                    if config.continuous:
+                        servo = Servo(
+                            config.pin,
+                            pin_factory=self.factory,
+                            min_pulse_width=0.5 / 1000,
+                            max_pulse_width=2.5 / 1000,
+                        )
+                        self.servos.append(
+                            {
+                                "servo": servo,
+                                "config": config,
+                                "last": 0.0,
+                                "continuous": True,
+                            }
+                        )
+                        servo.value = 0
+                    else:
+                        servo = AngularServo(
+                            config.pin,
+                            pin_factory=self.factory,
+                            min_angle=config.min_angle,
+                            max_angle=config.max_angle,
+                            min_pulse_width=0.5 / 1000,
+                            max_pulse_width=2.5 / 1000,
+                        )
+                        self.servos.append(
+                            {
+                                "servo": servo,
+                                "config": config,
+                                "last": config.offset,
+                                "continuous": False,
+                            }
+                        )
+                        servo.angle = config.offset
 
             self.is_available = len(self.servos) > 0
         except Exception as e:
@@ -59,20 +81,26 @@ class ServoController:
 
         servo_data = self.servos[index]
         config = servo_data["config"]
-        angle = max(config.min_angle, min(config.max_angle, angle + config.offset))
 
-        if abs(angle - servo_data["last_angle"]) < config.deadband:
-            return
-
-        servo_data["servo"].angle = angle
-        servo_data["last_angle"] = angle
+        if servo_data["continuous"]:
+            speed = max(-1.0, min(1.0, angle))
+            if abs(speed - servo_data["last"]) < config.deadband:
+                return
+            servo_data["servo"].value = speed
+            servo_data["last"] = speed
+        else:
+            angle = max(config.min_angle, min(config.max_angle, angle + config.offset))
+            if abs(angle - servo_data["last"]) < config.deadband:
+                return
+            servo_data["servo"].angle = angle
+            servo_data["last"] = angle
 
         time.sleep(config.interval)
 
     def set_arm_angles(self, base: float, mid: float, top: float):
-        self.state.base_angle = base
-        self.state.mid_angle = mid
-        self.state.top_angle = top
+        self.state.base = base
+        self.state.mid = mid
+        self.state.top = top
 
         for i, servo_data in enumerate(self.servos):
             config = servo_data["config"]

@@ -75,10 +75,10 @@ class ControllerInput:
             self.state.rb_button = state == 1
 
     def get_movement_vector(self) -> Vector2:
-        return Vector2(self.state.left_x, self.state.left_y)
+        return Vector2(self.state.left.x, self.state.left.y)
 
     def get_arm_vector(self) -> Vector2:
-        return Vector2(self.state.right_x, self.state.right_y)
+        return Vector2(self.state.right.x, self.state.right.y)
 
     def get_pump_control(self) -> bool:
         return self.state.a_button

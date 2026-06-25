@@ -25,6 +25,7 @@ class ServoConfig:
     enabled: bool = True
     pin: int = 0
     type: int = ServoType.BASE_ARM.value
+    continuous: bool = False
     min_angle: float = 0.0
     max_angle: float = 360.0
     offset: float = 0.0
@@ -94,7 +95,7 @@ class Config:
                 enabled=True,
                 pin=6,
                 type=ServoType.BASE_ARM.value,
-                min_angle=0,
+                continuous=True,                min_angle=0,
                 max_angle=360,
                 offset=0,
                 deadband=1.5,

@@ -9,6 +9,36 @@ class SettingsScreen:
     def save_config(self):
         self.config.save_to_file()
 
+    def add_motor(self):
+        from config import MotorConfig
+        self.config.motors.append(MotorConfig(enabled=True, pin=0, min_speed=0, max_speed=1.0, left=True, reversed=False))
+        ui.navigate.reload()
+
+    def add_pump(self):
+        from config import PumpConfig
+        self.config.pumps.append(PumpConfig(enabled=True, forward_pin=0, backward_pin=0, enable_pin=0))
+        ui.navigate.reload()
+
+    def add_servo(self):
+        from config import ServoConfig, ServoType
+        self.config.servos.append(ServoConfig(enabled=True, pin=0, type=ServoType.BASE_ARM.value, continuous=False, min_angle=0, max_angle=360, offset=0, deadband=1.5, interval=0.08))
+        ui.navigate.reload()
+
+    def delete_motor(self, index: int):
+        if 0 <= index < len(self.config.motors):
+            self.config.motors.pop(index)
+            ui.navigate.reload()
+
+    def delete_pump(self, index: int):
+        if 0 <= index < len(self.config.pumps):
+            self.config.pumps.pop(index)
+            ui.navigate.reload()
+
+    def delete_servo(self, index: int):
+        if 0 <= index < len(self.config.servos):
+            self.config.servos.pop(index)
+            ui.navigate.reload()
+
     def render(self):
         with ui.card().classes("w-full p-2 mb-4"):
             with ui.row().classes("justify-between items-center w-full"):
@@ -68,13 +98,18 @@ class SettingsScreen:
                     text="enabled", value=self.config.motors_enabled
                 ).bind_value(self.config, "motors_enabled")
 
-                ui.label("Motors").classes("font-bold")
+                with ui.row().classes("justify-between items-center w-full mb-2"):
+                    ui.label("Motors").classes("font-bold")
+                    ui.button(icon="add", on_click=self.add_motor).props("round")
 
                 with ui.row():
                     for i, motor in enumerate(self.config.motors):
                         with ui.card():
-                            with ui.row().classes("justify-center"):
+                            with ui.row().classes("justify-between items-center w-full"):
                                 ui.label(text=str(i)).classes("font-extrabold")
+                                ui.button(icon="delete", on_click=lambda idx=i: self.delete_motor(idx)).props("flat round")
+
+                            with ui.row().classes("justify-center"):
                                 ui.checkbox(
                                     text="enabled", value=motor.enabled
                                 ).bind_value(motor, "enabled")
@@ -102,16 +137,21 @@ class SettingsScreen:
         with ui.expansion("Pumps").classes("w-full"):
             with ui.card().classes("w-full"):
                 ui.checkbox(
-                    text="enabled", value=self.config.motors_enabled
+                    text="enabled", value=self.config.pumps_enabled
                 ).bind_value(self.config, "pumps_enabled")
 
-                ui.label("Pumps").classes("font-bold")
+                with ui.row().classes("justify-between items-center w-full mb-2"):
+                    ui.label("Pumps").classes("font-bold")
+                    ui.button(icon="add", on_click=self.add_pump).props("round")
 
                 with ui.row():
                     for i, pump in enumerate(self.config.pumps):
                         with ui.card():
-                            with ui.row().classes("justify-center"):
+                            with ui.row().classes("justify-between items-center w-full"):
                                 ui.label(text=str(i)).classes("font-extrabold")
+                                ui.button(icon="delete", on_click=lambda idx=i: self.delete_pump(idx)).props("flat round")
+
+                            with ui.row().classes("justify-center"):
                                 ui.checkbox(
                                     text="enabled", value=pump.enabled
                                 ).bind_value(pump, "enabled")
@@ -138,13 +178,18 @@ class SettingsScreen:
                     text="enabled", value=self.config.servos_enabled
                 ).bind_value(self.config, "servos_enabled")
 
-                ui.label("Servos").classes("font-bold")
+                with ui.row().classes("justify-between items-center w-full mb-2"):
+                    ui.label("Servos").classes("font-bold")
+                    ui.button(icon="add", on_click=self.add_servo).props("round")
 
                 with ui.row():
                     for i, servo in enumerate(self.config.servos):
                         with ui.card():
-                            with ui.row().classes("justify-center"):
+                            with ui.row().classes("justify-between items-center w-full"):
                                 ui.label(text=str(i)).classes("font-extrabold")
+                                ui.button(icon="delete", on_click=lambda idx=i: self.delete_servo(idx)).props("flat round")
+
+                            with ui.row().classes("justify-center"):
                                 ui.checkbox(
                                     text="enabled", value=servo.enabled
                                 ).bind_value(servo, "enabled")
@@ -162,6 +207,11 @@ class SettingsScreen:
                                 value=servo.type,
                             ).bind_value(servo, "type")
 
+                            ui.checkbox(
+                                text="Is Continuous",
+                                value=servo.continuous
+                            ).bind_value(servo, "continuous")
+
                             ui.number(
                                 label="Deadband",
                                 placeholder=0,
@@ -177,20 +227,21 @@ class SettingsScreen:
                                 step=0.01,
                             ).bind_value(servo, "interval")
 
-                            ui.label("Min Angle").classes("font-bold")
-                            ui.slider(
-                                min=-360, max=360, value=servo.min_angle, step=0.1
-                            ).props("label-always").bind_value(servo, "min_angle")
+                            with ui.column().bind_visibility_from(servo, "continuous", value=False):
+                                ui.label("Min Angle").classes("font-bold")
+                                ui.slider(
+                                    min=-360, max=360, value=servo.min_angle, step=0.1
+                                ).props("label-always").bind_value(servo, "min_angle")
 
-                            ui.label("Max Angle").classes("font-bold")
-                            ui.slider(
-                                min=-360, max=360, value=servo.max_angle, step=0.1
-                            ).props("label-always").bind_value(servo, "max_angle")
+                                ui.label("Max Angle").classes("font-bold")
+                                ui.slider(
+                                    min=-360, max=360, value=servo.max_angle, step=0.1
+                                ).props("label-always").bind_value(servo, "max_angle")
 
-                            ui.label("Offset").classes("font-bold")
-                            ui.slider(
-                                min=-360, max=360, value=servo.offset, step=0.1
-                            ).props("label-always").bind_value(servo, "offset")
+                                ui.label("Offset").classes("font-bold")
+                                ui.slider(
+                                    min=-360, max=360, value=servo.offset, step=0.1
+                                ).props("label-always").bind_value(servo, "offset")
 
         with ui.row():
             ui.button("save", on_click=self.save_config)
